@@ -1,0 +1,696 @@
+######################################################################################################################################
+#       									Importing the Loan/credit default dataset
+######################################################################################################################################
+
+credit_data = read.csv("C:/Users/Gautami Edara/OneDrive - McGill University/Fall Semester/MGSC 661 - Serpa/Final Project/Final Data/final_data.csv")
+credit_data_gbm = read.csv("C:/Users/Gautami Edara/OneDrive - McGill University/Fall Semester/MGSC 661 - Serpa/Final Project/Final Data/final_data.csv")
+
+######################################################################################################################################
+#       									Import or Install the required Libraries
+######################################################################################################################################
+# install.packages("cvms")
+# install.packages("ggimage")
+# install.packages("rsvg")
+# install.packages("tibble")
+
+# install.packages("gbm")
+# install.packages("ggfortify")
+
+# install.packages("crosstable")
+# install.packages("swirl")
+# install.packages("recipes", dependencies = TRUE)
+# install.packages("BiocManager")
+# install.packages("caret")
+# install.packages("dplyr")
+# install.packages("randomForest")
+# install.packages("stargazer")
+# install.packages("MASS")
+# install.packages("metan")
+# install.packages("GGally")
+
+library(rsvg)
+library(ggimage)
+library(cvms)
+library(tibble)   
+library(ggplot2)
+library(GGally)
+library(ggplot2)
+library(ggfortify)
+library("gbm")
+library(metan)  
+library(caret)
+library(dplyr)
+require("recipes")
+library(plyr)   
+library(caret)
+library("MASS")
+library(stargazer)
+library(ggplot2)
+require(methods)
+require("rms")
+library(corrplot)
+library(crosstable)
+require(caTools)
+require(methods)
+library(swirl)
+library(caret)
+library(dplyr)
+library(boot)
+library(rpart)
+library(tree)
+library(rpart.plot)
+library(randomForest)
+library(plyr)
+
+#### attaching the dataset
+attach(credit_data)
+
+
+#### column names present in the dataset
+names(credit_data)
+
+# "checking_status"        "duration"               "credit_history"         "purpose"                "credit_amount"         
+# "savings_status"         "employment"             "installment_commitment" "personal_status"        "other_parties"         
+# "residence_since"        "property_magnitude"     "age"                    "other_payment_plans"    "housing"               
+# "existing_credits"       "job"                    "num_dependents"         "own_telephone"          "foreign_worker"        
+
+#renaming the column names
+names(credit_data)[names(credit_data) == 'checking_status'] <- 'checking_account_status'
+names(credit_data)[names(credit_data) == 'duration'] <- 'duration_months'
+names(credit_data)[names(credit_data) == 'purpose'] <- 'credit_purpose'
+names(credit_data)[names(credit_data) == 'savings_status'] <- 'savings_account_status'
+names(credit_data)[names(credit_data) == 'employment'] <- 'years_of_employment'
+names(credit_data)[names(credit_data) == 'residence_since'] <- 'years_of_residence'
+names(credit_data)[names(credit_data) == 'installment_commitment'] <- 'rate_of_installment'
+names(credit_data)[names(credit_data) == 'existing_credits'] <- 'num_existing_credits'
+
+#### attaching the dataset
+attach(credit_data)
+
+
+#### checking if there are empty records
+is.na(credit_data)
+credit_data_numeric_labels = c('Duration Months','Credit Amount','Rate of Installment','Years of residence','Age','No. of Existing Credits','No. of Dependents')
+
+###creating numerical columns dataset
+credit_data_numeric = credit_data[c('duration_months','credit_amount','rate_of_installment','years_of_residence','age','num_existing_credits','num_dependents')]
+colnames(credit_data_numeric) <- credit_data_numeric_labels
+
+#####################################################################################################################################
+#       										Correlation Matrix - Numerical variables
+#####################################################################################################################################
+
+
+corr <- corr_coef(credit_data_numeric)
+# row.names(corr) <- credit_data_numeric_labels
+plot(corr)
+
+
+#####################################################################################################################################
+#       											Box Plot   - Numerical variables
+#####################################################################################################################################
+
+windows(width=50,height=50)
+par(mfrow=c(2,4))
+
+for(i in 1:6){
+  boxplot((credit_data_numeric)[i], xlab=names(credit_data_numeric)[i], col = '#b1c9a7', xlab=credit_data_numeric_labels[i])
+}
+
+
+#####################################################################################################################################
+#      											  Histogram for the continuous columns
+#####################################################################################################################################
+
+windows(width=50,height=50)
+par(mfrow=c(2,4))
+
+for(i in 1:ncol(credit_data_numeric)){
+  hist(credit_data_numeric[[i]] ,main="Histogram",xlab=credit_data_numeric_labels[i],col="#b1c9a7",label=TRUE,plot = TRUE)
+}
+
+#### data distribution details
+summary(credit_data_numeric)
+
+#####################################################################################################################################
+#     											  Barplot for the categorical columns
+#####################################################################################################################################
+
+credit_data_categorical = credit_data[c('checking_account_status','credit_history','credit_purpose','savings_account_status','years_of_employment','personal_status','other_parties','property_magnitude','other_payment_plans','housing','job','own_telephone','foreign_worker','class')]
+credit_data_cat_label = credit_data[c('Checking Account Status','Credit History','Credit Purpose','Saving Account Status','Years of Employment','Personal Status','Other Parties','Property Magnitude','Other Payment Plans','Housing','Job','Own Telephone','Foreign Worker','Class')]
+
+windows(width=50,height=50)
+par(mfrow=c(3,3))
+axis(1, at = 0:4)
+cat_barplot=credit_data[c('checking_account_status','credit_history','credit_purpose','savings_account_status','years_of_employment','personal_status','other_payment_plans','job','foreign_worker')]
+cat_barplot_label=c('Checking Account Status','Credit History','Credit Purpose','Saving Account Status','Years of Employment','Personal Status','Other Payment Plans','Job','Foreign Worker')
+
+for(i in 1:ncol(cat_barplot)){
+  counts<-table((cat_barplot)[i])
+  barplot(counts,main=cat_barplot_label[i],col="#b1c9a7",label=TRUE,plot = TRUE,ces=1.5, las=2)
+ 
+}
+
+#####################################################################################################################################
+#      											Dummify the categorical variables
+#####################################################################################################################################
+
+credit_data$checking_account_status = (as.factor((credit_data$checking_account_status)))
+credit_data$credit_history = (as.factor((credit_data$credit_history)))
+credit_data$credit_purpose = (as.factor((credit_data$credit_purpose)))
+credit_data$savings_account_status = (as.factor((credit_data$savings_account_status)))
+credit_data$years_of_employment = (as.factor((credit_data$years_of_employment)))
+credit_data$personal_status = (as.factor((credit_data$personal_status)))
+credit_data$other_parties = (as.factor((credit_data$other_parties)))
+credit_data$property_magnitude = (as.factor((credit_data$property_magnitude)))
+credit_data$other_payment_plans = (as.factor((credit_data$other_payment_plans)))
+credit_data$housing = (as.factor((credit_data$housing)))
+credit_data$job = (as.factor((credit_data$job)))
+credit_data$own_telephone = (as.factor((credit_data$own_telephone)))
+credit_data$foreign_worker = (as.factor((credit_data$foreign_worker)))
+credit_data$class <- as.factor(credit_data$class)
+# changing the value good as 0 and bad as 1
+
+revalue(credit_data$class, c("good"=0, "bad"=1))
+attach(credit_data)
+
+
+##############################################################################################################################################
+#            									 Feature Selection
+##############################################################################################################################################
+
+#trace to show OOB and the importance of adding additional trees
+randomForest(class ~ checking_account_status+ duration_months+ credit_history+ credit_purpose+ credit_amount+ savings_account_status+ years_of_employment+ rate_of_installment+ personal_status+ other_parties+ years_of_residence+ property_magnitude+ age+ other_payment_plans+ housing+ num_existing_credits+ job+ num_dependents+ own_telephone+ foreign_worker, ntree=5000,importance=TRUE,data=credit_data, na.action = na.omit, do.trace=50)
+
+forestAllVars=randomForest(class ~ checking_account_status+ duration_months+ credit_history+ credit_purpose+ credit_amount+ savings_account_status+ years_of_employment+ rate_of_installment+ personal_status+ other_parties+ years_of_residence+ property_magnitude+ age+ other_payment_plans+ housing+ num_existing_credits+ job+ num_dependents+ own_telephone+ foreign_worker, ntree=3750, data=credit_data, importance=TRUE, na.action = na.omit)
+forestAllVars
+
+#variable importance using random forest
+importance(forestAllVars)
+varImpPlot(forestAllVars)
+
+##############################################################################################################################################
+#            									 Selected Features
+##############################################################################################################################################
+      # checking_account_status 
+      # duration_months 
+      # credit_history 
+      # credit_purpose 
+      # credit_amount 
+      # savings_account_status 
+      # years_of_employment 
+      # rate_of_installment 
+      # personal_status 
+      # other_parties 
+      # years_of_residence 
+      # property_magnitude 
+      # age 
+      # housing 
+      # own_telephone 
+      # foreign_worker
+
+main_accuracy_list <-c()
+main_precision_list <-c()
+main_recall_list <-c()
+main_f1_score_list <-c()
+##############################################################################################################################################
+#            									 MODEL 1 : Logistic Regression
+##############################################################################################################################################
+
+
+index=1
+####################################################################################
+#### Split the data set into train and test with sample size of 70%-30% respectively
+####################################################################################
+smp_size <- floor(0.70 * nrow(credit_data))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+
+train_data <- sample(seq_len(nrow(credit_data)), size = smp_size)
+
+#### train data
+credit_data_train <- credit_data[train_data, ]
+
+#### test data
+credit_data_test <- credit_data[-train_data, ]
+
+#### check the number of records in train and test
+nrow(credit_data_train)
+nrow(credit_data_test)
+
+#### Train the model using the training sets 
+logistic =  glm(formula = class ~ checking_account_status + duration_months + credit_history + credit_purpose + credit_amount + savings_account_status + years_of_employment + rate_of_installment + personal_status + other_parties + years_of_residence + property_magnitude + age + other_payment_plans + housing + num_existing_credits + num_dependents + own_telephone + foreign_worker, data = credit_data_train, family ="binomial")
+summary(logistic)
+stargazer(logistic, type="html")
+
+# p1 = predict(logistic, credit_data_train, type='response')
+# head(p1)
+
+####   Misclassification error - train data
+# pred1 = ifelse(p1>0.5,1,0)
+# tab1 = table(Predicted = pred1, Actual = credit_data_train$class)
+# tab1
+# 
+# tab1_accuracy= (tab1[1][1]+tab1[4][1])/(tab1[1][1]+tab1[2][1]+tab1[3][1]+tab1[4][1])
+# paste('Accuracy :',tab1_accuracy)
+# 
+# tab1_precision= (tab1[4][1])/(tab1[4][1]+tab1[2][1])
+# paste('Precision :',tab1_precision)
+# 
+# tab1_recall= (tab1[4][1])/(tab1[4][1]+tab1[3][1])
+# paste('Recall :',tab1_recall)
+# tab1_f1_score = ((2*tab1_precision*tab1_recall)/(tab1_precision+tab1_recall))
+# paste('F1 Score :',tab1_f1_score)
+# 
+
+####  Misclassification error - Test data
+
+p2 = predict(logistic, credit_data_test, type='response')
+head(p2)
+
+pred2 = ifelse(p2>0.5,"bad","good")
+tab2 = table(Predicted = pred2, Actual = credit_data_test$class)
+tab2
+
+
+#TN : True Negative  -  tab2[1][1]
+#FN : False Negative -  tab2[3][1]
+#FP : False Positive -  tab2[2][1]
+#TP : True Positive  -  tab2[4][1]
+
+tab2_accuracy= (tab2[1][1]+tab2[4][1])/(tab2[1][1]+tab2[2][1]+tab2[3][1]+tab2[4][1])
+paste('Accuracy :',tab2_accuracy)
+
+tab2_precision= (tab2[4][1])/(tab2[4][1]+tab2[2][1])
+paste('Precision :',tab2_precision)
+
+tab2_recall= (tab2[4][1])/(tab2[4][1]+tab2[3][1])
+paste('Recall :',tab2_recall)
+
+tab2_f1_score = (2*tab2_precision*tab2_recall)/(tab2_precision+tab2_recall)
+paste('F1 score :',tab2_f1_score)
+
+
+#### removed some of the variables and trained the model using the training sets 
+#### Final Linear regression model
+new_logistic =  glm(formula = class ~ checking_account_status+ duration_months+ credit_history+ credit_purpose+ credit_amount+ savings_account_status+ years_of_employment+ rate_of_installment+ personal_status+ other_parties, data = credit_data_train, family ="binomial")
+summary(new_logistic)
+stargazer(new_logistic, type="html")
+
+####   Different logistic regression plots 
+plot(new_logistic)
+
+
+####   Prediction
+# p1 = predict(new_logistic, credit_data_train, type='response')
+# head(p1)
+
+####   Misclassification error - train data
+# #pred1 = ifelse(p1>0.5,1,0)
+# pred1 = ifelse(p1>0.5,"bad","good")
+# tab1 = table(Predicted = pred1, Actual = credit_data_train$class)
+# tab1
+# 
+# tab1_accuracy= (tab1[1][1]+tab1[4][1])/(tab1[1][1]+tab1[2][1]+tab1[3][1]+tab1[4][1])
+# paste('Accuracy :',tab1_accuracy)
+# 
+# tab1_precision= (tab1[4][1])/(tab1[4][1]+tab1[2][1])
+# paste('Precision :',tab1_precision)
+# 
+# tab1_recall= (tab1[4][1])/(tab1[4][1]+tab1[3][1])
+# paste('Recall :',tab1_recall)
+# 
+# tab1_f1_score = (2*tab1_precision*tab1_recall)/(tab1_precision+tab1_recall)
+# paste('F1 Score :',tab1_f1_score)
+
+
+####  Misclassification error - Test data
+
+p2 = predict(new_logistic, credit_data_test, type='response')
+head(p2)
+pred2 = ifelse(p2>0.5,"good","bad")
+tab2 = table(Predicted = pred2, Actual = credit_data_test$class)
+tab2
+
+#TN : True Negative  -  tab2[1][1]
+#FN : False Negative -  tab2[3][1]
+#FP : False Positive -  tab2[2][1]
+#TP : True Positive  -  tab2[4][1]
+
+tab2_accuracy= (tab2[1][1]+tab2[4][1])/(tab2[1][1]+tab2[2][1]+tab2[3][1]+tab2[4][1])
+paste('Accuracy :',tab2_accuracy)
+
+tab2_precision= (tab2[4][1])/(tab2[4][1]+tab2[2][1])
+paste('Precision :',tab2_precision)
+
+tab2_recall= (tab2[4][1])/(tab2[4][1]+tab2[3][1])
+paste('Recall :',tab2_recall)
+
+tab2_f1_score = (2*tab2_precision*tab2_recall)/(tab2_precision+tab2_recall)
+paste('F1 score :',tab2_f1_score)
+
+main_accuracy_list[index]<-tab2_accuracy
+main_precision_list[index]<-tab2_precision
+main_recall_list[index]<-tab2_recall
+main_f1_score_list[index]<-tab2_f1_score
+index=index+1
+
+conf_mat <- confusion_matrix(predictions = pred2,targets = credit_data_test$class)
+plot_confusion_matrix(conf_mat$`Confusion Matrix`[[1]], add_sums = FALSE,palette = "Greens")
+
+
+##############################################################################################################################################
+#                    								 MODEL 2 : Decision Trees
+##############################################################################################################################################
+
+# decision tree with party package
+# In rpart, the amount of detail is defined by two parameters:
+
+#cp determines when the splitting up of the decision tree stops.
+# minsplit determines the minimum amount of observations in a leaf of the tree.
+
+#created loop to check the best cp value on the basis of f1 score
+
+F1List <-c()
+cpList <-c()
+for(i in 1:5){
+      #looking for overfitted tree and out of performance error as cp function
+      myoverfittedtree = rpart(class ~checking_account_status + duration_months + credit_history + credit_purpose + credit_amount + savings_account_status + years_of_employment + rate_of_installment + personal_status + other_parties + years_of_residence + property_magnitude + age + other_payment_plans + housing + num_existing_credits + num_dependents + own_telephone + foreign_worker , method = 'class', data = credit_data_train, control=rpart.control(cp=0.000001))
+       
+      # Finding the optimal 'cp' value i.e minimizing the error
+      opt_cp=myoverfittedtree$cptable[which.min(myoverfittedtree$cptable[,"xerror"]),"CP"]
+      opt_cp
+      cpList[i]<-opt_cp
+      fit <- rpart(class~checking_account_status + duration_months + credit_history + credit_purpose + credit_amount + savings_account_status + years_of_employment + rate_of_installment + personal_status + other_parties + years_of_residence + property_magnitude + age + other_payment_plans + housing + num_existing_credits + num_dependents + own_telephone + foreign_worker, data = credit_data_train, method = 'class',control=rpart.control(cp=opt_cp))
+      # rpart.plot(fit)
+      predict_unseen <-predict(fit, credit_data_test, type = 'class')
+      table_mat = table(Predicted = predict_unseen, Actual = credit_data_test$class)
+      table_mat
+      
+      table_mat_accuracy= (table_mat[1][1]+table_mat[4][1])/(table_mat[1][1]+table_mat[2][1]+table_mat[3][1]+table_mat[4][1])
+      # paste('Accuracy :',table_mat_accuracy)
+      # 
+      table_mat_precision= (table_mat[4][1])/(table_mat[4][1]+table_mat[2][1])
+      # paste('Precision :',table_mat_precision)
+
+      table_mat_recall= (table_mat[4][1])/(table_mat[4][1]+table_mat[3][1])
+      # paste('Recall :',table_mat_recall)
+      
+      table_mat_f1_score = (2*table_mat_precision*table_mat_recall)/(table_mat_precision+table_mat_recall)
+      # paste('F1 Score :',table_mat_f1_score)
+      F1List[i]<-table_mat_f1_score
+}
+
+
+fit <- rpart(class~checking_account_status + duration_months + credit_history + credit_purpose + credit_amount + savings_account_status + years_of_employment + rate_of_installment + personal_status + other_parties + years_of_residence + property_magnitude + age + other_payment_plans + housing + num_existing_credits + num_dependents + own_telephone + foreign_worker, data = credit_data_train, method = 'class',control=rpart.control(cp=cpList[which.max(F1List)]))
+
+rpart.plot(fit)
+
+predict_unseen <-predict(fit, credit_data_test, type = 'class')
+table_mat = table(Predicted = predict_unseen, Actual = credit_data_test$class)
+table_mat
+
+table_mat_accuracy= (table_mat[1][1]+table_mat[4][1])/(table_mat[1][1]+table_mat[2][1]+table_mat[3][1]+table_mat[4][1])
+paste('Accuracy :',table_mat_accuracy)
+ 
+table_mat_precision= (table_mat[4][1])/(table_mat[4][1]+table_mat[2][1])
+paste('Precision :',table_mat_precision)
+
+table_mat_recall= (table_mat[4][1])/(table_mat[4][1]+table_mat[3][1])
+paste('Recall :',table_mat_recall)
+
+table_mat_f1_score = (2*table_mat_precision*table_mat_recall)/(table_mat_precision+table_mat_recall)
+paste('F1 Score :',table_mat_f1_score)
+
+main_accuracy_list[index]=table_mat_accuracy
+main_precision_list[index]=table_mat_precision
+main_recall_list[index]=table_mat_recall
+main_f1_score_list[index]= table_mat_f1_score
+index=index+1
+
+conf_mat <- confusion_matrix(predictions = predict_unseen,targets = credit_data_test$class)
+plot_confusion_matrix(conf_mat$`Confusion Matrix`[[1]] ,add_sums = FALSE,palette = "Greens")
+
+##############################################################################################################################################
+#                    								 MODEL 3 : Random Forest
+##############################################################################################################################################
+
+## Random Forest Do - Trace test
+
+randomForest(class ~  checking_account_status + duration_months + credit_history + credit_purpose + credit_amount + savings_account_status + years_of_employment + rate_of_installment + personal_status + other_parties + years_of_residence + property_magnitude + age + other_payment_plans + housing + num_existing_credits + num_dependents + own_telephone + foreign_worker, ntree=5000,importance=TRUE,data=credit_data, na.action = na.omit, do.trace=50)
+
+## Random Forest initial model with all predictors
+myinitialforest=randomForest(class ~ ., ntree=3450, data=credit_data_train, importance=TRUE, na.action = na.omit)
+myinitialforest
+
+## Feature Importance using Random Forest
+
+importance(myinitialforest)
+varImpPlot(myinitialforest)
+
+## Prediction using test data in Random Forest - initial model
+
+predicted=predict(myinitialforest,credit_data_test)
+
+actual=credit_data_test$class
+
+## Confusion Matrix
+mat = table(Predicted = predicted, Actual = credit_data_test$class)
+
+mat
+mat_accuracy= (mat[1][1]+mat[4][1])/(mat[1][1]+mat[2][1]+mat[3][1]+mat[4][1])
+paste('Accuracy :',mat_accuracy)
+
+mat_precision= (mat[4][1])/(mat[4][1]+mat[2][1])
+paste('Precision :',mat_precision)
+
+mat_recall= (mat[4][1])/(mat[4][1]+mat[3][1])
+paste('Recall :',mat_recall)
+
+mat_f1_score = (2*mat_precision*mat_recall)/(mat_precision+mat_recall)
+paste('F1 Score :',mat_f1_score)
+
+## Random Forest initial model with selected predictors Iteration 2
+
+myforestIteration1=randomForest(class ~ checking_account_status + duration_months + credit_history + credit_purpose + credit_amount + savings_account_status + years_of_employment + rate_of_installment + personal_status + other_parties + years_of_residence + property_magnitude + age  + housing  + num_dependents + own_telephone + foreign_worker , ntree=3450, data=credit_data_train, importance=TRUE, na.action = na.omit)
+myforestIteration1
+
+
+## Feature Importance using Random Forest
+
+importance(myforestIteration1)
+varImpPlot(myforestIteration1)
+
+## Prediction using test data in Random Forest - Iteration 2 model
+
+predicted=predict(myforestIteration1,credit_data_test)
+
+actual=credit_data_test$class
+
+## Confusion Matrix
+
+mat = table(Predicted = predicted, Actual = credit_data_test$class)
+mat
+mat_accuracy= (mat[1][1]+mat[4][1])/(mat[1][1]+mat[2][1]+mat[3][1]+mat[4][1])
+paste('Accuracy :',mat_accuracy)
+
+mat_precision= (mat[4][1])/(mat[4][1]+mat[2][1])
+paste('Precision :',mat_precision)
+
+mat_recall= (mat[4][1])/(mat[4][1]+mat[3][1])
+paste('Recall :',mat_recall)
+
+mat_f1_score = (2*mat_precision*mat_recall)/(mat_precision+mat_recall)
+paste('F1 Score :',mat_f1_score)
+
+#########################################################################
+## Random Forest initial model with selected predictors Final Iteration #
+#########################################################################
+
+myforest=randomForest(class ~ checking_account_status + duration_months + credit_history + credit_purpose + credit_amount + savings_account_status + years_of_employment + rate_of_installment + personal_status + other_parties + years_of_residence + property_magnitude + age  + housing   + own_telephone + foreign_worker , ntree=3450, data=credit_data_train, importance=TRUE, na.action = na.omit)
+myforest
+
+## Prediction using test data in Random Forest - Final Iteration 
+
+predicted=predict(myforest,credit_data_test)
+
+actual=credit_data_test$class
+
+## Feature Importance using Random Forest
+
+importance(myforest)
+varImpPlot(myforest)
+
+## Confusion Matrix
+mat = table(Predicted = predicted, Actual = credit_data_test$class)
+mat
+mat_accuracy= (mat[1][1]+mat[4][1])/(mat[1][1]+mat[2][1]+mat[3][1]+mat[4][1])
+paste('Accuracy :',mat_accuracy)
+
+mat_precision= (mat[4][1])/(mat[4][1]+mat[2][1])
+paste('Precision :',mat_precision)
+
+mat_recall= (mat[4][1])/(mat[4][1]+mat[3][1])
+paste('Recall :',mat_recall)
+
+mat_f1_score = (2*mat_precision*mat_recall)/(mat_precision+mat_recall)
+paste('F1 Score :',mat_f1_score)
+
+
+chartName <-c("Accuracy","Precision","Recall","F1 Score")
+df <- data.frame(Measure=chartName,Scores=c(round(mat_accuracy*100,2),round(mat_precision*100,2),round(mat_recall*100,2),round(mat_f1_score*100,2)))
+# # Barplot
+ggplot(df, aes(x=Measure, y=Scores)) + ggtitle("Scores for Random Forest")+ylab("Scores") +geom_bar(stat="identity", fill="#b1c9a7")+ geom_text(aes(label=Scores), vjust=1.6, color="white", size=3.5)
+
+
+conf_mat <- confusion_matrix(predictions = predicted,targets = credit_data_test$class)
+plot_confusion_matrix(conf_mat$`Confusion Matrix`[[1]], add_sums = FALSE,palette = "Greens")
+
+main_accuracy_list[index]=mat_accuracy
+main_precision_list[index]=mat_precision
+main_recall_list[index]=mat_recall
+main_f1_score_list[index]= mat_f1_score
+index=index+1
+
+
+
+##############################################################################################################################################
+#                								 MODEL 4 : Gradient Boosted Method
+##############################################################################################################################################
+
+#renaming the column names
+names(credit_data_gbm)[names(credit_data_gbm) == 'checking_status'] <- 'checking_account_status'
+names(credit_data_gbm)[names(credit_data_gbm) == 'duration'] <- 'duration_months'
+names(credit_data_gbm)[names(credit_data_gbm) == 'purpose'] <- 'credit_purpose'
+names(credit_data_gbm)[names(credit_data_gbm) == 'savings_status'] <- 'savings_account_status'
+names(credit_data_gbm)[names(credit_data_gbm) == 'employment'] <- 'years_of_employment'
+names(credit_data_gbm)[names(credit_data_gbm) == 'residence_since'] <- 'years_of_residence'
+names(credit_data_gbm)[names(credit_data_gbm) == 'installment_commitment'] <- 'rate_of_installment'
+names(credit_data_gbm)[names(credit_data_gbm) == 'existing_credits'] <- 'num_existing_credits'
+
+#### credit_data_gbm dataset is being used
+#### convert the categorical variables to numeric and then as factor it for GBM
+
+credit_data_gbm$checking_account_status = (as.factor(as.numeric(credit_data_gbm$checking_account_status)))
+credit_data_gbm$credit_history = (as.factor(as.numeric(credit_data_gbm$credit_history)))
+credit_data_gbm$credit_purpose = (as.factor(as.numeric(credit_data_gbm$credit_purpose)))
+credit_data_gbm$savings_account_status = (as.factor(as.numeric(credit_data_gbm$savings_account_status)))
+credit_data_gbm$years_of_employment = (as.factor(as.numeric(credit_data_gbm$years_of_employment)))
+credit_data_gbm$personal_status = (as.factor(as.numeric(credit_data_gbm$personal_status)))
+credit_data_gbm$other_parties = (as.factor(as.numeric(credit_data_gbm$other_parties)))
+credit_data_gbm$property_magnitude = (as.factor(as.numeric(credit_data_gbm$property_magnitude)))
+credit_data_gbm$other_payment_plans = (as.factor(as.numeric(credit_data_gbm$other_payment_plans)))
+credit_data_gbm$housing = (as.factor(as.numeric(credit_data_gbm$housing)))
+credit_data_gbm$job = (as.factor(as.numeric(credit_data_gbm$job)))
+credit_data_gbm$own_telephone = (as.factor(as.numeric(credit_data_gbm$own_telephone)))
+credit_data_gbm$foreign_worker = (as.factor(as.numeric(credit_data_gbm$foreign_worker)))
+revalue(credit_data_gbm$class, c("good"=0, "bad"=1))
+credit_data_gbm$class=ifelse(credit_data_gbm$class == "bad",1,0)
+attach(credit_data_gbm)
+
+##Split the data set into train and test with sample size of 70%-30% respectively
+smp_size <- floor(0.70 * nrow(credit_data_gbm))## set the seed to make your partition reproducible
+set.seed(123)
+
+train_data <- sample(seq_len(nrow(credit_data_gbm)), size = smp_size)
+
+#train data
+credit_data_train_gbm <- credit_data_gbm[train_data, ]
+
+#test data
+credit_data_test_gbm <- credit_data_gbm[-train_data, ]
+
+# check the number of records in train and test
+nrow(credit_data_train_gbm)
+nrow(credit_data_test_gbm)
+
+# 
+boosted=gbm(class ~  checking_account_status+ duration_months+ credit_history+ credit_purpose+ credit_amount+ savings_account_status+ years_of_employment+ rate_of_installment+ personal_status+ other_parties+ years_of_residence+ property_magnitude+ age+ housing+  own_telephone+ foreign_worker,
+            data=credit_data_train_gbm,distribution=
+              "bernoulli",n.trees=10000, interaction.depth=4)
+summary(boosted)
+
+
+pred = predict.gbm(object = boosted,
+                   newdata = credit_data_test_gbm,
+                   n.trees = 200,
+                   type = "response")
+
+pred1 = ifelse(pred>0.5,1,0)
+result = data.frame(credit_data_test_gbm$class, pred1)
+print(result)
+
+#confusion matrix for gbm
+
+table_mat_gbm = table(Predicted = pred1, Actual = credit_data_test_gbm$class)
+table_mat_gbm
+
+table_mat_gbm_accuracy= (table_mat_gbm[1][1]+table_mat_gbm[4][1])/(table_mat_gbm[1][1]+table_mat_gbm[2][1]+table_mat_gbm[3][1]+table_mat_gbm[4][1])
+paste('Accuracy :',table_mat_gbm_accuracy)
+
+table_mat_gbm_precision= (table_mat_gbm[4][1])/(table_mat_gbm[4][1]+table_mat_gbm[2][1])
+paste('Precision :',table_mat_gbm_precision)
+
+table_mat_gbm_recall= (table_mat_gbm[4][1])/(table_mat_gbm[4][1]+table_mat_gbm[3][1])
+paste('Recall :',table_mat_gbm_recall)
+
+table_mat_gbm_f1_score = (2*table_mat_gbm_precision*table_mat_gbm_recall)/(table_mat_gbm_precision+table_mat_gbm_recall)
+paste('F1 Score :',table_mat_gbm_f1_score)
+
+main_accuracy_list[index]=table_mat_gbm_accuracy
+main_precision_list[index]=table_mat_gbm_precision
+main_recall_list[index]=table_mat_gbm_recall
+main_f1_score_list[index]= table_mat_gbm_f1_score
+
+conf_mat <- confusion_matrix(predictions = pred1,targets = credit_data_test_gbm$class)
+plot_confusion_matrix(conf_mat$`Confusion Matrix`[[1]], add_sums = FALSE,palette = "Greens")
+
+
+##############################################################################################################################################
+#                         										MODEL COMPARISON
+##############################################################################################################################################
+
+
+chartName <-c("Logistic Regression","Regression Trees","Random Forest","Gradient Boosted Method")
+df <- data.frame(Models=chartName,F1_Score=round(main_f1_score_list, digits = 2))
+# # Barplot
+ggplot(df, aes(x=Models, y=F1_Score)) + ggtitle("Model Comparison based on F1 Score")+ylab("F1 Score") +geom_bar(stat="identity", fill="#b1c9a7")+ geom_text(aes(label=F1_Score), vjust=1.6, color="white", size=3.5)
+ 
+df_recall <- data.frame(Models=chartName,Recall_Score=round(main_recall_list, digits = 2))
+# # Barplot
+ggplot(df_recall, aes(x=Models, y=Recall_Score)) + ggtitle("Model Comparison based on Recall")+ylab("Recall") +geom_bar(stat="identity", fill="#b1c9a7")+ geom_text(aes(label=Recall_Score), vjust=1.6, color="white")
+
+
+
+##############################################################################################################################################
+#                         										PCA
+##############################################################################################################################################
+library(ggplot2)
+library(GGally)
+ggpairs(credit_data_numeric) # difficulty in reading the ggpair plot
+
+#creating pca
+pca=prcomp(credit_data_numeric, scale=TRUE)
+
+#pca output
+pca
+
+#plot the pca graph
+autoplot(pca, data = credit_data_numeric, loadings = TRUE, loadings.label = TRUE,col='grey' )
+
+#plot the pca graph for personal status as 'female div/dep/mar'
+autoplot(pca, data = credit_data_numeric, loadings = TRUE,
+         col=ifelse(credit_data_categorical$personal_status=="male single","blue","transparent"), loadings.label = TRUE )
+#plot the pca graph for personal status as 'car'
+autoplot(pca, data = credit_data_numeric, loadings = TRUE,
+         col=ifelse(credit_data_categorical$property_magnitude=="real estate","blue","transparent"), loadings.label = TRUE )
+#percentage of variance
+pve=(pca$sdev^2)/sum(pca$sdev^2)
+pve
+
+par(mfrow=c(1,2))
+
+#accuracy % of PCA
+plot(pve, ylim=c(0,1))
+plot(cumsum(pve), ylim=c(0,1))
